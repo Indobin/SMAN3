@@ -21,7 +21,7 @@ def Main():
     try:
         conn = psycopg2.connect(database='SMAN3',
                                 user='postgres',
-                                password='321',
+                                password='lumajang7',
                                 host='localhost',
                                 port=5432)
         cur = conn.cursor()
@@ -86,7 +86,7 @@ def Menu_admin(cur,conn,id_admin):
     pilih_menu = input("Pilih menu nomor (1/2/3/4/5) : ")
     match pilih_menu:
         case '1':
-            Kelas()
+            Kelas(cur,conn,id_admin)
         case '2':
             Mata_pelajaran(cur,conn,id_admin)
         case '3':
@@ -100,7 +100,112 @@ def Menu_admin(cur,conn,id_admin):
         case _:
             input("Perintah tidak diketahui!")
             Menu_admin(cur,conn) 
-            
+
+def Kelas(cur,conn,id_admin):
+    clear()
+    print("=" * 41)
+    print("|" + " " * 17 + "Kelas" + " " * 17 + "|")
+    print("=" * 41)
+    print(f"{"No":<15} {"ID":<15} {"Kelas"}")
+    print("-"*41)
+    query_kelas = '''SELECT * FROM kelas'''
+    cur.execute(query_kelas)
+    data = cur.fetchall()
+    No = 0;
+    for i in data:
+        No += 1;
+        print(f"{No:<15} {i[0]:<15} {i[1]}")
+    print("="*41)
+    print("[1] Tambah")
+    print("[2] Edit")
+    print("[3] Hapus")
+    print("[4] Kembali")
+    print("="*41)
+    pilih_menu = input(f"Pilih menu nomor (1/2/3/4) : ")
+    match pilih_menu:
+        case '1':
+            Tambah_kelas(cur,conn,id_admin)
+        case '2':
+            Edit_kelas(cur,conn,id_admin)
+        case '3':
+            Hapus_kelas(cur,conn,id_admin)
+        case '4':
+            Menu_admin(cur,conn,id_admin)
+        case _:
+            input("Perintah tidak diketahui!")
+            Kelas(cur,conn,id_admin)  
+
+def Tambah_kelas(cur,conn,id_admin):
+    print(f"-- Tambah Kelas --")
+    total_input = int(input(f"Ingin Menambahkan Berapa Data : "))
+    for i in range(total_input):
+        id = input(f"Masukkan ID Kelas (Angka) : ")
+        cek_query = '''SELECT * FROM kelas'''
+        cur.execute(cek_query)
+        cek = cur.fetchall()
+        for data in cek:
+            if data[0] == id:
+                print("ID Kelas Sudah Ada")
+                Tambah_kelas(cur,conn,id_admin)
+
+            else:
+                Nama_Kelas = input(f"Masukkan Kelas    : ")
+                query_tambah_kelas = '''INSERT INTO kelas (id_kelas, kelas) 
+                                VALUES(%s, %s)'''
+                cur.execute(query_tambah_kelas,(id, Nama_Kelas))
+                conn.commit()
+                Kelas(cur,conn,id_admin)
+                
+def Edit_kelas(cur,conn,id_admin):
+    print(f"-- Edit Kelas --")
+    id = input(f"Masukkan ID Kelas Yang Ingin Diupdate: ")
+    select_query_kelas = '''SELECT * FROM kelas WHERE id_kelas = %s'''
+    cur.execute(select_query_kelas, (id,))
+    cek = cur.fetchone()
+    if cek:
+        print("Data Saat Ini")
+        print(f"ID Kelas :  {cek[0]}")
+        print(f"Kelas    :  {cek[1]}")
+        Nama_Kelas = input(f"Masukkan Nama Kelas : ") or cek[1]
+        update_query_kelas = '''
+            UPDATE kelas
+            SET kelas = %s
+            WHERE id_kelas = %s
+        '''
+        cur.execute(update_query_kelas, (Nama_Kelas, id))
+        conn.commit()
+        input("Data Kelas Telah Diperbarui.")
+        Kelas(cur,conn,id_admin)
+
+    else:
+        print("ID Kelas Tidak Ditemukan.")
+        Edit_kelas(cur,conn,id_admin)
+
+def Hapus_kelas(cur,conn,id_admin):
+    print(f"-- Hapus Kelas --")
+    id = input(f"Masukkan ID Kelas Yang Ingin Dihapus : ")
+    select_query_kelas = '''SELECT * FROM kelas WHERE id_kelas = %s'''
+    cur.execute(select_query_kelas,(id,))
+    cek = cur.fetchone()
+    if cek:
+        print("Data Saat Ini")
+        print(f"ID Kelas :  {cek[0]}")
+        print(f"Kelas    :  {cek[1]}")
+        konfir = input(f"Apakah Anda Yakin Untuk Menghapus? (y/n) : ")
+        if konfir == "y":
+            query_delete_kelas = '''DELETE FROM kelas WHERE id_kelas = %s'''
+            cur.execute(query_delete_kelas,(id,))
+            conn.commit()
+            input("Hapus Data Kelas Berhasil.")
+            Kelas(cur,conn,id_admin)
+
+        else:
+            Kelas(cur,conn,id_admin)
+    
+    else:
+        print("ID Kelas Tidak Ditemukan.")
+        Hapus_kelas(cur,conn,id_admin)
+        
 def Mata_pelajaran(cur,conn,id_admin):
     # tampilan_admin()
     clear()
@@ -134,7 +239,8 @@ def Mata_pelajaran(cur,conn,id_admin):
             Menu_admin(cur,conn,id_admin)
         case _:
             input("Perintah tidak diketahui!")
-            Mata_pelajaran(cur,conn,id_admin)          
+            Mata_pelajaran(cur,conn,id_admin)   
+                   
 def Tbh_mata_pelajaran(cur,conn,id_admin):
     print(f"--Tambah Data--")
     total_input = int(input(f"Ingin Menambahkan Berapa Data : "))
@@ -424,6 +530,7 @@ where nisn = %s '''
     else:
         input(f"Nisn siswa {Nisn} tidak ditemukan.")
         Siswa(cur,conn,id_admin)
+        
 def Login_guru(cur,conn):
     clear()
     tampilan_guru()
@@ -451,7 +558,7 @@ def Menu_guru(cur,conn):
         case '1':
             Jadwal_pelajaran()
         case '2':
-            Jenis_tugas()
+            Jenis_tugas(cur,conn)
         case '3':
             Nilai_siswa()
         case '4':
@@ -459,5 +566,110 @@ def Menu_guru(cur,conn):
         case _:
             input("Perintah tidak diketahui!")
             Menu_guru(cur,conn) 
+
+def Jenis_tugas(cur,conn):
+    clear()
+    print("=" * 41)
+    print("|" + " " * 14 + "Jenis Tugas" + " " * 14 + "|")
+    print("=" * 41)
+    print(f"{"No":<13} {"ID":<13} {"Jenis Tugas"}")
+    print("-"*41)
+    query_kelas = '''SELECT * FROM jenis_tugas'''
+    cur.execute(query_kelas)
+    data = cur.fetchall()
+    No = 0;
+    for i in data:
+        No += 1;
+        print(f"{No:<13} {i[0]:<13} {i[1]}")
+    print("="*41)
+    print("[1] Tambah")
+    print("[2] Edit")
+    print("[3] Hapus")
+    print("[4] Kembali")
+    print("="*41)
+    pilih_menu = input(f"Pilih menu nomor (1/2/3/4) : ")
+    match pilih_menu:
+        case '1':
+            Tambah_jenis_tugas(cur,conn)
+        case '2':
+            Edit_jenis_tugas(cur,conn)
+        case '3':
+            Hapus_jenis_tugas(cur,conn)
+        case '4':
+            Menu_guru(cur,conn)
+        case _:
+            input("Perintah tidak diketahui!")
+            Jenis_tugas(cur,conn)  
+
+def Tambah_jenis_tugas(cur,conn):
+    print(f"-- Tambah Jenis Tugas  --")
+    total_input = int(input(f"Ingin Menambahkan Berapa Data : "))
+    for i in range(total_input):
+        id_tugas = input(f"Masukkan ID Tugas (Angka) : ")
+        cek_query = '''SELECT * FROM jenis_tugas'''
+        cur.execute(cek_query)
+        cek = cur.fetchall()
+        for data in cek:
+            if data[0] == id_tugas:
+                print("ID Jenis Tugas Sudah Ada")
+                Tambah_jenis_tugas(cur,conn)
+
+            else:
+                jenis_tugas = input(f"Masukkan Jenis Tugas    : ")
+                query_tambah_jenis_tugas = '''INSERT INTO jenis_tugas (id_tugas, jenis_tugas) 
+                                VALUES(%s, %s)'''
+                cur.execute(query_tambah_jenis_tugas,(id_tugas, jenis_tugas))
+                conn.commit()
+                Jenis_tugas(cur,conn)
+
+def Edit_jenis_tugas(cur,conn):
+    print(f"-- Edit Jenis Tugas --")
+    id_tugas= input(f"Masukkan ID Tugas Yang Ingin Diupdate: ")
+    select_query_jenis_tugas = '''SELECT * FROM jenis_tugas WHERE id_tugas = %s'''
+    cur.execute(select_query_jenis_tugas, (id_tugas,))
+    cek = cur.fetchone()
+    if cek:
+        print("Data Saat Ini")
+        print(f"ID Tugas       :  {cek[0]}")
+        print(f"Jenis Tugas    :  {cek[1]}")
+        Nama_Kelas = input(f"Masukkan Nama Jenis Tugas : ") or cek[1]
+        update_query_jenis_tugas = '''
+            UPDATE jenis_tugas
+            SET jenis_tugas = %s
+            WHERE id_tugas = %s
+        '''
+        cur.execute(update_query_jenis_tugas, (Nama_Kelas, id_tugas))
+        conn.commit()
+        input("Data Jenis Tugas Telah Diperbarui.")
+        Jenis_tugas(cur,conn)
+
+    else:
+        print("ID Jenis Tugas Tidak Ditemukan.")
+        Edit_jenis_tugas(cur,conn)
+
+def Hapus_jenis_tugas(cur,conn):
+    print(f"-- Hapus Jenis TUgas --")
+    id_tugas = input(f"Masukkan ID Tugas Yang Ingin Dihapus : ")
+    select_query_jenis_tugas = '''SELECT * FROM jenis_tugas WHERE id_tugas = %s'''
+    cur.execute(select_query_jenis_tugas,(id_tugas,))
+    cek = cur.fetchone()
+    if cek:
+        print("Data Saat Ini")
+        print(f"ID Tugas       :  {cek[0]}")
+        print(f"Jenis Tugas    :  {cek[1]}")
+        konfir = input(f"Apakah Anda Yakin Untuk Menghapus? (y/n) : ")
+        if konfir == "y":
+            query_delete_jenis_tugas = '''DELETE FROM jenis_tugas WHERE id_tugas = %s'''
+            cur.execute(query_delete_jenis_tugas,(id_tugas,))
+            conn.commit()
+            input("Hapus Data Jenis Tugas Berhasil.")
+            Jenis_tugas(cur,conn)
+
+        else:
+            Jenis_tugas(cur,conn)
+    
+    else:
+        print("ID Jenis Tugas Tidak Ditemukan.")
+        Hapus_jenis_tugas(cur,conn)
 if __name__ == "__main__":
     Main()
