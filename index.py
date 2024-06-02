@@ -44,22 +44,15 @@ def Menu_utama(cur,conn):
     pilih_menu = input("Pilih menu nomor (1/2) : ")
     if pilih_menu == '1':
         Login_admin(cur,conn)
-        # break  
     elif pilih_menu == '2':
         Login_guru(cur,conn)
-        # break  
     else:
         input("Perintah tidak diketahui!")
-
+        Menu_utama(cur,conn)
 
 def Login_admin(cur,conn):
     clear()
     tampilan_admin()
-    admin = '''SELECT username, password from admin'''
-    cur.execute(admin)
-    data = cur.fetchall()
-    for i in data:
-        print(i)
     username = input(f"Masukkan Username : ")
     password = input(f"Masukkan Password : ")
     select_query = "SELECT * FROM admin WHERE username = %s AND password = %s"
@@ -75,34 +68,32 @@ def Login_admin(cur,conn):
 def Menu_admin(cur,conn,id_admin):
     clear()
     tampilan_admin()
-    # print(id_admin)
     print("[1] Kelas")
     print("[2] Mata Pelajaran")
     print("[3] Siswa")
     print("[4] Guru")
-    print("[6] Jadwal Pelajaran")
-    print("[5] Logout")
+    print("[5] Jadwal Pelajaran")
+    print("[6] Logout")
     print("=" * 31)
     pilih_menu = input("Pilih menu nomor (1/2/3/4/5) : ")
     match pilih_menu:
         case '1':
-            Kelas()
+            Kelas(cur,conn,id_admin)
         case '2':
             Mata_pelajaran(cur,conn,id_admin)
         case '3':
             Siswa(cur,conn,id_admin)
         case '4':
-            Guru()
+            Guru(cur,conn,id_admin)
         case '5':
-            Jadwal_pelajaran()
+            Jadwal_pelajaran(cur,conn,id_admin)
         case '6':
             Menu_utama(cur,conn) 
         case _:
             input("Perintah tidak diketahui!")
-            Menu_admin(cur,conn) 
+            Menu_admin(cur,conn,id_admin) 
             
 def Mata_pelajaran(cur,conn,id_admin):
-    # tampilan_admin()
     clear()
     print("=" * 50)
     print("|" + " " * 17 + "Mata Pelajaran" + " " * 17 + "|")
@@ -137,26 +128,47 @@ def Mata_pelajaran(cur,conn,id_admin):
             Mata_pelajaran(cur,conn,id_admin)          
 def Tbh_mata_pelajaran(cur,conn,id_admin):
     print(f"--Tambah Data--")
-    total_input = int(input(f"Ingin Menambahkan Berapa Data : "))
+    try:
+        total_input = int(input("Ingin Menambahkan Berapa Data: "))
+        if total_input <= 0:
+            raise ValueError("Jumlah data harus lebih dari 0")
+    except ValueError:
+        print("Mohon masukkan jumlah tambah data yang valid (angka positif)")
+        Tbh_mata_pelajaran(cur, conn, id_admin)
+        return
     for i in range(total_input):
         Kode_awal = "KD"
-        Kode =           input(f"Masukkan Kode Pelajaran (angka) : ")
-        Kode_lengkap = Kode_awal+Kode
+        Kode = input("Masukkan Kode Pelajaran (angka): ")
+        if Kode.strip() == "":
+            print("Mohon masukkan kode pelajaran")
+            Tbh_mata_pelajaran(cur, conn, id_admin)
+            return
+        Kode_lengkap = Kode_awal + Kode
         cek_query = '''SELECT * FROM mata_pelajaran'''
         cur.execute(cek_query)
         cek = cur.fetchall()
         for data in cek:
             if data[1] == Kode_lengkap:
                 print("Kode Pelajaran sudah ada")
-                Tbh_mata_pelajaran(cur,conn,id_admin)
-        else:
-                Nama_pelajaran = input(f"Masukkan Nama Mata Pelaja1ran    : ")
-                semester =   int(input(f"Masukkan Semester (angka)       : "))
-                query_tambah = '''INSERT INTO mata_pelajaran (kode_pelajaran, nama_pelajaran, semester) 
-                                VALUES(%s, %s, %s)'''
-                cur.execute(query_tambah,(Kode_lengkap, Nama_pelajaran, semester))
-                conn.commit()
-                Mata_pelajaran(cur,conn,id_admin)
+                Tbh_mata_pelajaran(cur, conn, id_admin)
+                return
+        Nama_pelajaran = input("Masukkan Nama Mata Pelajaran: ")
+        if Nama_pelajaran.strip() == "":
+            print("Mohon masukkan nama mata pelajaran")
+            Tbh_mata_pelajaran(cur, conn, id_admin)
+            return
+        try:
+            semester = int(input("Masukkan Semester (angka): "))
+        except ValueError:
+            print("Semester harus berupa angka")
+            Tbh_mata_pelajaran(cur, conn, id_admin)
+            return
+        query_tambah = '''INSERT INTO mata_pelajaran (kode_pelajaran, nama_pelajaran, semester) 
+                        VALUES(%s, %s, %s)'''
+        cur.execute(query_tambah, (Kode_lengkap, Nama_pelajaran, semester))
+        conn.commit()
+        input("Data berhasil ditambahkan, enter untuk kembali")
+    Mata_pelajaran(cur, conn, id_admin)
 
 def Edit_mata_pelajaran(cur,conn,id_admin):
     print(f"--Edit Data--")
@@ -199,45 +211,21 @@ def Hapus_mata_pelajaran(cur,conn,id_admin):
         konfirmasi = input(f"Apakah anda yakin ingin mengghapus data ini? (y/n): ")
         if konfirmasi == "y":
             query_delete = '''DELETE FROM mata_pelajaran WHERE kode_pelajaran = %s'''
-            cur.execute(query_delete,(Kode,))
-            conn.commit()
-            input("Hapus data mata pelajaran berhasil.")
-            Mata_pelajaran(cur,conn,id_admin)
+            try:
+                cur.execute(query_delete, (Kode,))
+                conn.commit()
+                input("Data mata pelajaran berhasil dihapus.")
+                Mata_pelajaran(cur,conn,id_admin)
+            except psycopg2.IntegrityError as e: 
+                input("Gagal menghapus data karena ada relasi dengan data lain.")
+                conn.rollback()
+                Mata_pelajaran(cur,conn,id_admin)
         else :
             Mata_pelajaran(cur,conn,id_admin)
     else:
         print("Kode mata pelajaran tidak ditemukan.")
         Hapus_mata_pelajaran(cur,conn,id_admin)
-# def Hapus_mata_pelajaran(cur, conn, id_admin):
-#     print("--Hapus Data--")
 
-#     try:
-#         kode_pelajaran = input("Masukan kode mata pelajaran yang ingin dihapus: ")
-#         query_select = f"SELECT * FROM mata_pelajaran WHERE kode_pelajaran = {kode_pelajaran}"
-#         cur.execute(query_select)
-#         data_mata_pelajaran = cur.fetchone()
-#     except Exception as e:
-#         print(f"Error: {e}")
-#         return
-#     if data_mata_pelajaran:
-#         print("Data Saat Ini:")
-#         print(f"Kode mata pelajaran: {data_mata_pelajaran[1]}")
-#         print(f"Nama mata pelajaran: {data_mata_pelajaran[2]}")
-#         print(f"Semester: {data_mata_pelajaran[3]}")
-
-#         konfirmasi = input("Apakah Anda yakin ingin menghapus data ini? (y/n): ")
-#         if konfirmasi.lower() == "y":
-#             query_delete = f"DELETE FROM mata_pelajaran WHERE kode_pelajaran = {kode_pelajaran}"
-#             cur.execute(query_delete)
-#             conn.commit()
-#             print("Hapus data mata pelajaran berhasil.")
-#             Mata_pelajaran(cur, conn, id_admin)
-#         else:
-#             print("Penghapusan data dibatalkan.")
-#             Mata_pelajaran(cur, conn, id_admin)
-#     else:
-#         print(f"Kode mata pelajaran '{kode_pelajaran}' tidak ditemukan.")
-#         Hapus_mata_pelajaran(cur, conn, id_admin)
 def Siswa(cur,conn,id_admin):
     clear()
     print("=" * 93)
@@ -281,49 +269,47 @@ def Siswa(cur,conn,id_admin):
 
 def Tbh_siswa(cur,conn,id_admin):
     print(f"--Tambah Data--")
-    total_input = int(input(f"Ingin Menambahkan Berapa Data : "))
-    for i in range(total_input):
-        Nisn =           input(f"Masukkan NISN siswa (angka) : ")
-        cek_query = '''SELECT * FROM siswa'''
-        cur.execute(cek_query)
-        cek = cur.fetchall()
-        for data in cek:
-            if data[1] == Nisn:
-                print("NISN siswa sudah ada")
-                Tbh_siswa(cur,conn,id_admin)
-        else:
-                Nama_siswa = input(f"Masukkan nama siswa    : ")
-                No_telepon =   input(f"Masukkan no telepon siswa (angka) : ")
-                Tahun_angkatan =   input(f"Masukkan tahun angkatan siswa (angka) : ")
-                Tgl_lahir =   input(f"Masukkan tangal lahir siswa (yyyy-mm-dd) : ")
-                Tempat_lahir =   input(f"Masukkan tempat lahir siswa : ")
-                Jenis_kelamin =   input(f"Pilih jenis kelamin siswa (L/P) : ")
-                Provinsi =   input(f"Masukkan provinsi siswa : ")
-                Kabupatenkota =   input(f"Masukkan kabupaten/kota siswa : ")
-                Kecamatan =   input(f"Masukkan kecamatan siswa : ")
-                Jalan =   input(f"Masukkan alamat jalan siswa : ")
-                query_kelas = '''SELECT * FROM kelas'''
-                cur.execute(query_kelas)
-                cek = cur.fetchall()
-                for i in cek:
-                    print(f"id : {i[0]} kelas : {i[1]}")
-                Pilih_kelas = input(f"Masukkan id kelas yang dipilih : ")
-                Id_admin = id_admin
-                Status = True
-                query_tambah = '''INSERT INTO alamat (provinsi, kabupatenkota, kecamatan, jalan) 
-                                VALUES(%s, %s, %s, %s)
-                                RETURNING id_alamat'''
-                cur.execute(query_tambah,(Provinsi, Kabupatenkota, Kecamatan, Jalan))
-                id_alamat_baru = cur.fetchone()[0]
-                conn.commit()
-                query_tambah_siswa = '''INSERT INTO siswa (nisn, nama_siswa, no_telp, tahun_angkatan, tgl_lahir,
-                tempat_lahir, jenis_kelamin, id_alamat, id_kelas, id_admin, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'''
-                cur.execute(query_tambah_siswa, (Nisn, Nama_siswa, No_telepon, Tahun_angkatan, Tgl_lahir, 
-                            Tempat_lahir, Jenis_kelamin, id_alamat_baru, Pilih_kelas, Id_admin, Status))
-                conn.commit()
-                input(f"Menambah data siswa berhasil")
-                Siswa(cur,conn,id_admin)
+    Nisn =           input(f"Masukkan NISN siswa (angka) : ")
+    cek_query = '''SELECT * FROM siswa'''
+    cur.execute(cek_query)
+    cek = cur.fetchall()
+    for data in cek:
+        if data[1] == Nisn:
+            print("NISN siswa sudah ada")
+            Tbh_siswa(cur,conn,id_admin)
+    else:
+            Nama_siswa = input(f"Masukkan nama siswa    : ")
+            No_telepon =   input(f"Masukkan no telepon siswa (angka) : ")
+            Tahun_angkatan =   input(f"Masukkan tahun angkatan siswa (angka) : ")
+            Tgl_lahir =   input(f"Masukkan tangal lahir siswa (yyyy-mm-dd) : ")
+            Tempat_lahir =   input(f"Masukkan tempat lahir siswa : ")
+            Jenis_kelamin =   input(f"Pilih jenis kelamin siswa (L/P) : ")
+            Provinsi =   input(f"Masukkan provinsi siswa : ")
+            Kabupatenkota =   input(f"Masukkan kabupaten/kota siswa : ")
+            Kecamatan =   input(f"Masukkan kecamatan siswa : ")
+            Jalan =   input(f"Masukkan alamat jalan siswa : ")
+            query_kelas = '''SELECT * FROM kelas'''
+            cur.execute(query_kelas)
+            cek = cur.fetchall()
+            for i in cek:
+                print(f"id : {i[0]} kelas : {i[1]}")
+            Pilih_kelas = input(f"Masukkan id kelas yang dipilih : ")
+            Id_admin = id_admin
+            Status = True
+            query_tambah = '''INSERT INTO alamat (provinsi, kabupatenkota, kecamatan, jalan) 
+                            VALUES(%s, %s, %s, %s)
+                            RETURNING id_alamat'''
+            cur.execute(query_tambah,(Provinsi, Kabupatenkota, Kecamatan, Jalan))
+            id_alamat_baru = cur.fetchone()[0]
+            conn.commit()
+            query_tambah_siswa = '''INSERT INTO siswa (nisn, nama_siswa, no_telp, tahun_angkatan, tgl_lahir,
+            tempat_lahir, jenis_kelamin, id_alamat, id_kelas, id_admin, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'''
+            cur.execute(query_tambah_siswa, (Nisn, Nama_siswa, No_telepon, Tahun_angkatan, Tgl_lahir, 
+                        Tempat_lahir, Jenis_kelamin, id_alamat_baru, Pilih_kelas, Id_admin, Status))
+            conn.commit()
+            input(f"Menambah data siswa berhasil")
+            Siswa(cur,conn,id_admin)
 
 def Edit_siswa(cur,conn,id_admin):
     print(f"--Edit Data--")
@@ -343,21 +329,27 @@ where nisn = %s '''
         print(f"No Telepon              : {cek[2]}")
         print(f"Provinsi tempat tinggal : {cek[3]}")
         print(f"Alamat tempat tinggal   : {cek[4]}")
-        print(f"Kelas                   : {cek[5]}")
+        print(f"Kelas                   : {cek[8]}")
         if cek[6] == 1:
             print(f"Status                  : {'Aktif'}")
         else:
             print(f"Status                  : {'Tidak Aktif'}")
-        if cek[7] == '':
-            print(f"Keterangan              : ")
+        if cek[7] == None:
+            print(f"Keterangan              : {'Belum ada keterangan'}")
         else :
-            print(f"Keterangan              : ")
+            print(f"Keterangan              : {cek[7]}")
         print(f"--Edit beberapa data--")
         Nisn_baru = input(f"Nisn                    : ") or cek[0]
         Nama_siswa = input(f"Nama siswa              : ")or cek[1]
         No_telp = input(f"No Telepon              : ")or cek[2]
-        Kelas = input(f"Kelas                   : ")or cek[8]
-        Status = input(f"Status                  : ")or cek[6]
+        query_kelas = '''SELECT * FROM kelas'''
+        cur.execute(query_kelas)
+        cek_kelas = cur.fetchall()
+        for i in cek_kelas:
+            print(f"id : {i[0]} kelas : {i[1]}")
+        Kelas = input (f"Pilih id kelas          : ")or cek[8]
+        Kelas = int(Kelas)
+        Status = input(f"Status (1/0)                : ")or cek[6]
         Keterangan = input(f"Keterangan              : ") or cek[7]
         update_query = '''
             UPDATE siswa
@@ -415,8 +407,9 @@ where nisn = %s '''
             print(f"Status                  : {'Aktif'}")
         else:
             print(f"Status                  : {'Tidak Aktif'}")
-        if cek[12] == '':
-            print(f"Keterangan              : {'Kosong'}")
+    
+        if cek[12] == None:
+            print(f"Keterangan              : {'Belum ada keterangan'}")
         else :
             print(f"Keterangan              : {cek[12]}")
         input(f"Tekan enter untuk kembali...")
@@ -436,7 +429,7 @@ def Login_guru(cur,conn):
         Menu_guru(cur,conn)
     else:
         input('Username atau password salah.')
-        Login_admin(cur,conn)  
+        Login_guru(cur,conn)  
         
 def Menu_guru(cur,conn):
     clear()
