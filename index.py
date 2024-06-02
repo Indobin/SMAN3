@@ -21,7 +21,7 @@ def Main():
     try:
         conn = psycopg2.connect(database='SMAN3',
                                 user='postgres',
-                                password='lumajang7',
+                                password='321',
                                 host='localhost',
                                 port=5432)
         cur = conn.cursor()
@@ -98,7 +98,7 @@ def Kelas(cur,conn,id_admin):
     print("=" * 41)
     print("|" + " " * 17 + "Kelas" + " " * 17 + "|")
     print("=" * 41)
-    print(f"{"No":<15} {"ID":<15} {"Kelas"}")
+    print(f"{'No':<15} {'ID':<15} {'Kelas'}")
     print("-"*41)
     query_kelas = '''SELECT * FROM kelas'''
     cur.execute(query_kelas)
@@ -565,7 +565,7 @@ def Jenis_tugas(cur,conn):
     print("=" * 41)
     print("|" + " " * 14 + "Jenis Tugas" + " " * 14 + "|")
     print("=" * 41)
-    print(f"{"No":<13} {"ID":<13} {"Jenis Tugas"}")
+    print(f"{'No':<13} {'ID':<13} {'Jenis Tugas'}")
     print("-"*41)
     query_kelas = '''SELECT * FROM jenis_tugas'''
     cur.execute(query_kelas)
