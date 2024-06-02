@@ -21,7 +21,7 @@ def Main():
     try:
         conn = psycopg2.connect(database='SMAN3',
                                 user='postgres',
-                                password='lumajang7',
+                                password='firsta',
                                 host='localhost',
                                 port=5432)
         cur = conn.cursor()
@@ -86,7 +86,7 @@ def Menu_admin(cur,conn,id_admin):
         case '4':
             Guru(cur,conn,id_admin)
         case '5':
-            Jadwal_pelajaran(cur,conn,id_admin)
+            Jadwal_pelajaran_a(cur,conn,id_admin)
         case '6':
             Menu_utama(cur,conn) 
         case _:
@@ -523,6 +523,178 @@ where nisn = %s '''
     else:
         input(f"Nisn siswa {Nisn} tidak ditemukan.")
         Siswa(cur,conn,id_admin)
+    
+def Jadwal_pelajaran_a(cur, conn, id_admin):
+    print("=" * 31)
+    print("|" + " " * 6 + "Jadwal Pelajaran" + " " * 7 + "|")
+    print("=" * 31)
+    print("[1] Tambah")
+    print("[2] Edit")
+    print("[3] Detail")
+    print("[4] Kembali")
+    print("="*93)
+    pilih_menu = input(f"Pilih menu nomor (1/2/3/4) : ")
+    match pilih_menu:
+        case '1':
+            Tambah_jadwal(cur, conn, id_admin)
+        case '2':
+            Edit_jadwal(cur, conn, id_admin)
+        case '3':
+            Detail_jadwal_a(cur, conn, id_admin)
+        case '4':
+            Menu_admin(cur, conn, id_admin)
+        case _:
+            input("Perintah tidak diketahui!")
+            Jadwal_pelajaran_a(cur, conn, id_admin)
+
+def Tambah_jadwal(cur, conn, id_admin):
+    print("--Tambah Jadwal--")
+    hari = input("Masukkan hari: ")
+    awal_pelajaran = input("Masukkan waktu awal pelajaran (HH:MM:SS): ")
+    akhir_pelajaran = input("Masukkan waktu akhir pelajaran (HH:MM:SS): ")
+    id_guru = int(input("Masukkan ID guru: "))
+    id_kelas = int(input("Masukkan ID kelas: "))
+
+    try:
+        # Mencari id_pelajaran berdasarkan id_guru
+        cur.execute("SELECT id_pelajaran FROM guru WHERE id_guru = %s", (id_guru,))
+        id_pelajaran = cur.fetchone()[0]
+
+        # Cek apakah ada jadwal yang tumpang tindih pada hari dan kelas yang sama
+        cur.execute("""
+            SELECT COUNT(*) FROM jadwal_pelajaran 
+            WHERE hari = %s AND id_kelas = %s AND (
+                (awal_pelajaran <= %s AND akhir_pelajaran > %s) OR
+                (awal_pelajaran < %s AND akhir_pelajaran >= %s) OR
+                (%s <= awal_pelajaran AND %s >= akhir_pelajaran)
+            )
+        """, (hari, id_kelas, awal_pelajaran, awal_pelajaran, akhir_pelajaran, akhir_pelajaran, awal_pelajaran, akhir_pelajaran))
+        overlapping_count = cur.fetchone()[0]
+
+        if overlapping_count > 0:
+            print("Jadwal bentrok dengan jadwal yang sudah ada, tidak dapat menambahkan data.")
+            Tambah_jadwal(cur, conn, id_admin)
+        else:
+            cur.execute("""
+                INSERT INTO jadwal_pelajaran (hari, awal_pelajaran, akhir_pelajaran, id_guru, id_pelajaran, id_kelas)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (hari, awal_pelajaran, akhir_pelajaran, id_guru, id_pelajaran, id_kelas))
+            conn.commit()
+            print("Jadwal berhasil ditambahkan.")
+            Jadwal_pelajaran_a(cur, conn, id_admin)
+    except TypeError:
+        print("ID guru tidak valid atau tidak terkait dengan mata pelajaran apa pun.")
+        Tambah_jadwal( cur, conn, id_admin)
+    except Exception as e:
+        conn.rollback()
+        print(f"Terjadi kesalahan: {e}")
+        Jadwal_pelajaran_a(cur, conn, id_admin)
+
+def Edit_jadwal(cur, conn, id_admin):
+    print("--Edit Jadwal--")
+    id_jadwal = int(input("Masukkan ID jadwal yang akan diedit: "))
+    print("Pilih kolom yang ingin diedit:")
+    print("[1] Hari")
+    print("[2] Awal Pelajaran")
+    print("[3] Akhir Pelajaran")
+    print("[4] ID Guru")
+    print("[5] ID Pelajaran")
+    print("[6] ID Kelas")
+    print("[7] Edit Semua")
+    pilihan = input("Masukkan pilihan (1/2/3/4/5/6/7): ")
+
+    update_fields = []
+    update_values = []
+
+    if pilihan in ['1', '7']:
+        hari = input("Masukkan hari baru: ")
+        update_fields.append("hari = %s")
+        update_values.append(hari)
+    if pilihan in ['2', '7']:
+        awal_pelajaran = input("Masukkan waktu awal pelajaran baru (HH:MM:SS): ")
+        update_fields.append("awal_pelajaran = %s")
+        update_values.append(awal_pelajaran)
+    if pilihan in ['3', '7']:
+        akhir_pelajaran = input("Masukkan waktu akhir pelajaran baru (HH:MM:SS): ")
+        update_fields.append("akhir_pelajaran = %s")
+        update_values.append(akhir_pelajaran)
+    if pilihan in ['4', '7']:
+        id_guru = int(input("Masukkan ID guru baru: "))
+        update_fields.append("id_guru = %s")
+        update_values.append(id_guru)
+    if pilihan in ['5', '7']:
+        id_pelajaran = int(input("Masukkan ID pelajaran baru: "))
+        update_fields.append("id_pelajaran = %s")
+        update_values.append(id_pelajaran)
+    if pilihan in ['6', '7']:
+        id_kelas = int(input("Masukkan ID kelas baru: "))
+        update_fields.append("id_kelas = %s")
+        update_values.append(id_kelas)
+
+    update_values.append(id_jadwal)
+
+    if not update_fields:
+        print("Tidak ada perubahan yang dipilih.")
+        return
+
+    update_query = f"UPDATE jadwal_pelajaran SET {', '.join(update_fields)} WHERE id_jadwal = %s"
+    
+    try:
+        cur.execute(update_query, tuple(update_values))
+        conn.commit()
+        print("Jadwal berhasil diubah.")
+        Jadwal_pelajaran_a(cur, conn, id_admin)
+    except Exception as e:
+        conn.rollback()
+        print(f"Terjadi kesalahan: {e}")
+        Jadwal_pelajaran_a(cur, conn, id_admin)
+
+def Detail_jadwal_a(cur, conn, id_admin):
+    print("--Detail Jadwal--")
+    print("Pilih jenis pencarian:")
+    print("[1] Berdasarkan ID Jadwal")
+    print("[2] Berdasarkan Hari")
+    print("[3] Berdasarkan ID Kelas")
+    pilihan = input("Masukkan pilihan (1/2/3): ")
+
+    query = ""
+    parameter = None
+
+    if pilihan == '1':
+        id_jadwal = int(input("Masukkan ID jadwal: "))
+        query = "SELECT * FROM jadwal_pelajaran WHERE id_jadwal = %s"
+        parameter = (id_jadwal,)
+    elif pilihan == '2':
+        hari = input("Masukkan hari: ")
+        query = "SELECT * FROM jadwal_pelajaran WHERE hari = %s"
+        parameter = (hari,)
+    elif pilihan == '3':
+        id_kelas = int(input("Masukkan ID kelas: "))
+        query = "SELECT * FROM jadwal_pelajaran WHERE id_kelas = %s"
+        parameter = (id_kelas,)
+    else:
+        print("Pilihan tidak valid.")
+        return
+
+    try:
+        cur.execute(query, parameter)
+        jadwals = cur.fetchall()
+        if jadwals:
+            print("="*90)
+            headers = ["ID Jadwal", "Hari", "Awal Pelajaran", "Akhir Pelajaran", "ID Guru", "ID Pelajaran", "ID Kelas"]
+            print(f"{headers[0]:<12} {headers[1]:<9} {headers[2]:<16} {headers[3]:<17} {headers[4]:<8} {headers[5]:<12} {headers[6]:<8}")
+            print("="*90)
+            for jadwal in jadwals:
+                awal_pelajaran = jadwal[2].strftime("%H:%M:%S")
+                akhir_pelajaran = jadwal[3].strftime("%H:%M:%S")
+                print(f"{jadwal[0]:<12} {jadwal[1]:<9} {awal_pelajaran:<16} {akhir_pelajaran:<17} {jadwal[4]:<8} {jadwal[5]:<12} {jadwal[6]:<8}")
+                Detail_jadwal_a(cur, conn, id_admin)
+        else:
+            print("Jadwal tidak ditemukan.")
+            Detail_jadwal_a(cur, conn, id_admin)
+    except Exception as e:
+        print(f"Terjadi kesalahan: {e}")
+        Jadwal_pelajaran_a(cur, conn, id_admin)
         
 def Login_guru(cur,conn):
     clear()
@@ -549,7 +721,7 @@ def Menu_guru(cur,conn):
     pilih_menu = input("Pilih menu nomor (1/2) : ")
     match pilih_menu:
         case '1':
-            Jadwal_pelajaran()
+            Jadwal_pelajaran_g(cur,conn)
         case '2':
             Jenis_tugas(cur,conn)
         case '3':
@@ -559,6 +731,70 @@ def Menu_guru(cur,conn):
         case _:
             input("Perintah tidak diketahui!")
             Menu_guru(cur,conn) 
+
+def Jadwal_pelajaran_g(cur, conn):
+    print("=" * 31)
+    print("|" + " " * 6 + "Jadwal Pelajaran" + " " * 7 + "|")
+    print("=" * 31)
+    print("[1] Detail")
+    print("[2] Kembali")
+    print("=" * 31)
+    pilih_menu = input(f"Pilih menu nomor (1/2) : ")
+    match pilih_menu:
+        case '1':
+            Detail_jadwal_g(cur, conn)
+        case '2':
+            Menu_guru(cur,conn)
+        case _:
+            input("Perintah tidak diketahui!")
+            Jadwal_pelajaran_g(cur, conn)
+
+def Detail_jadwal_g(cur, conn):
+    print("--Detail Jadwal--")
+    print("Pilih jenis pencarian:")
+    print("[1] Berdasarkan ID Jadwal")
+    print("[2] Berdasarkan Hari")
+    print("[3] Berdasarkan ID Kelas")
+    pilihan = input("Masukkan pilihan (1/2/3): ")
+
+    query = ""
+    parameter = None
+
+    if pilihan == '1':
+        id_jadwal = int(input("Masukkan ID jadwal: "))
+        query = "SELECT * FROM jadwal_pelajaran WHERE id_jadwal = %s"
+        parameter = (id_jadwal,)
+    elif pilihan == '2':
+        hari = input("Masukkan hari: ")
+        query = "SELECT * FROM jadwal_pelajaran WHERE hari = %s"
+        parameter = (hari,)
+    elif pilihan == '3':
+        id_kelas = int(input("Masukkan ID kelas: "))
+        query = "SELECT * FROM jadwal_pelajaran WHERE id_kelas = %s"
+        parameter = (id_kelas,)
+    else:
+        print("Pilihan tidak valid.")
+        return
+
+    try:
+        cur.execute(query, parameter)
+        jadwals = cur.fetchall()
+        if jadwals:
+            print("="*90)
+            headers = ["ID Jadwal", "Hari", "Awal Pelajaran", "Akhir Pelajaran", "ID Guru", "ID Pelajaran", "ID Kelas"]
+            print(f"{headers[0]:<12} {headers[1]:<9} {headers[2]:<16} {headers[3]:<17} {headers[4]:<8} {headers[5]:<12} {headers[6]:<8}")
+            print("="*90)
+            for jadwal in jadwals:
+                awal_pelajaran = jadwal[2].strftime("%H:%M:%S")
+                akhir_pelajaran = jadwal[3].strftime("%H:%M:%S")
+                print(f"{jadwal[0]:<12} {jadwal[1]:<9} {awal_pelajaran:<16} {akhir_pelajaran:<17} {jadwal[4]:<8} {jadwal[5]:<12} {jadwal[6]:<8}")
+                Jadwal_pelajaran_g(cur, conn)
+        else:
+            print("Jadwal tidak ditemukan.")
+            Detail_jadwal_g(cur, conn)
+    except Exception as e:
+        print(f"Terjadi kesalahan: {e}")
+        Jadwal_pelajaran_g(cur, conn)
 
 def Jenis_tugas(cur,conn):
     clear()
@@ -635,7 +871,6 @@ def Edit_jenis_tugas(cur,conn):
         conn.commit()
         input("Data Jenis Tugas Telah Diperbarui.")
         Jenis_tugas(cur,conn)
-
     else:
         print("ID Jenis Tugas Tidak Ditemukan.")
         Edit_jenis_tugas(cur,conn)
@@ -657,12 +892,11 @@ def Hapus_jenis_tugas(cur,conn):
             conn.commit()
             input("Hapus Data Jenis Tugas Berhasil.")
             Jenis_tugas(cur,conn)
-
         else:
             Jenis_tugas(cur,conn)
-    
     else:
         print("ID Jenis Tugas Tidak Ditemukan.")
         Hapus_jenis_tugas(cur,conn)
+        
 if __name__ == "__main__":
     Main()
