@@ -21,11 +21,7 @@ def Main():
     try:
         conn = psycopg2.connect(database='SMAN3',
                                 user='postgres',
-<<<<<<< HEAD
                                 password='321',
-=======
-                                password='firsta',
->>>>>>> 5cb953263c5f88ea62542ab58833f0a1d79a1726
                                 host='localhost',
                                 port=5432)
         cur = conn.cursor()
@@ -88,7 +84,7 @@ def Menu_admin(cur,conn,id_admin):
         case '3':
             Siswa(cur,conn,id_admin)
         case '4':
-            Guru(cur,conn,id_admin)
+            Admin_Guru(cur,conn,id_admin)
         case '5':
             Jadwal_pelajaran_a(cur,conn,id_admin)
         case '6':
@@ -527,7 +523,278 @@ where nisn = %s '''
     else:
         input(f"Nisn siswa {Nisn} tidak ditemukan.")
         Siswa(cur,conn,id_admin)
+        
+def Admin_Guru(cur,conn,id_admin):
+    clear()
+    query = """
+            select g.nama_guru, g.no_telp, g.jenis_kelamin, mp.nama_pelajaran, a.provinsi|| ', '||a.kabupatenkota || ', '|| a.kecamatan || ', '|| a.jalan || ', '|| detail, g.status, g.deskripsi, g.nip
+            from guru g
+            join alamat a on g.id_alamat = a.id_alamat
+            join mata_pelajaran mp on g.id_pelajaran = mp.id_pelajaran
+            """
+    cur.execute(query=query)
+    data = cur.fetchall()
+    No = 0
+    # tampilan_guru()
+    print(f'No\t Nama \t\t\t Nomor Telepon\t Gender\tMapel\tAlamat\tAdmin\tStatus\tDeskripsi\tNIP\n{"-"*125}')
+    for i in data:
+        No += 1
+        if len(i[1]) <= 5 and (i[8] != 'null' or len(i[8]) <= 5):
+            print(f"{No}\t {i[1]}\t\t\t {i[2]}\t {i[3]}\t{i[4]}\t{i[5]}\t{i[6]}\t{i[7]}\t{i[8]}\t{i[9]}")
+        if len(i[1]) <= 15 and (i[8] != 'null' or len(i[8]) <= 5):
+            print(f"{No}\t {i[1]}\t\t {i[2]} \t {i[3]}\t{i[4]}\t{i[5]}\t{i[6]}\t{i[7]}\t{i[8]}\t\t{i[9]}")
+        elif len(i[1]) > 15 and (i[8] != 'null' or len(i[8]) <= 5):
+            print(f"{No}\t {i[1]}\t {i[2]} \t {i[3]}\t{i[4]}\t{i[5]}\t{i[6]}\t{i[7]}\t{i[8]}\t\t{i[9]}")
+        elif len(i[1]) <= 5 and (i[8] != 'null' or len(i[8]) > 5):
+            print(f"{No}\t {i[1]}\t\t {i[2]} \t {i[3]}\t{i[4]}\t{i[5]}\t{i[6]}\t{i[7]}\t{i[8]}\t{i[9]}")
+        elif len(i[1]) <= 15 and (i[8] != 'null' or len(i[8]) > 5):
+            print(f"{No}\t\t {i[1]}\t {i[2]} \t {i[3]}\t{i[4]}\t{i[5]}\t{i[6]}\t{i[7]}\t{i[8]}\t{i[9]}")
+        elif len(i[1]) > 15 and (i[8] != 'null' or len(i[8]) > 5):
+            print(f"{No}\t\t {i[1]}\t {i[2]} \t {i[3]}\t{i[4]}\t{i[5]}\t{i[6]}\t{i[7]}\t{i[8]}\t{i[9]}")
+    print("="*125)
+    print("[1] Tambah")
+    print("[2] Edit")
+    print("[3] Kembali")
+    print("="*125)
+    pilih_menu = input(f"Pilih menu nomor (1/2/3/4) : ")
+    match pilih_menu:
+        case '1':
+            Tambah_Guru(cur,conn,id_admin)
+        case '2':
+            print('edit data')
+            Update_Guru(cur,conn,id_admin)
+        case '3':
+            Menu_admin(cur,conn,id_admin)
+        case _:
+            input("Perintah tidak diketahui!")
+            Admin_Guru(cur,conn,id_admin)
+
+def Tambah_Guru(cur, conn,id_admin):
+    clear()
+    print("=" * 42)
+    print("|" + " " * 12 + "Tambah Data Guru" + " " * 12 + "|")
+    print("=" * 42)
+    nama_guru = input("Nama : ")
+    no_telp = input("Nomer Telepon : ")
+    while True:
+        gender = input("Gender (L/P): ")
+        if gender == 'L' or gender == 'P':
+            break
+    cek_pelajaran = "select kode_pelajaran, nama_pelajaran from mata_pelajaran"
+    cur.execute(cek_pelajaran)
+    cek = cur.fetchall()
+    No = 0
+    for i in cek:
+        No += 1
+        print(f"{No}\t {i[1]}") 
+    pelajaran = input("Nomer pelajaran : ")
+    for data in cek:
+        if data[0] == 'KD'+pelajaran:
+            break
+        else:
+            input("Kode mata pelajaran tidak ada")
+            Tambah_Guru(cur, conn,id_admin)
     
+    provinsi = input    ("Provinsi tempat tinggal       : ")
+    kabupaten = input   ("Kabupaten/Kota tempat tinggal : ")
+    kecamatan = input   ("Kecamatan tempat tinggal      : ")
+    jalan = input       ("Jalan tempat tinggal          : ")
+    detail = input      ("Detail alamat (opsional)      : ")
+    nip = input         ("NIP                           : ")
+    x = True
+    print("-"*42)
+    while x == True:
+        confirm = input("Apakah anda ingin memasukkan data ini ? (y/n) : ")
+        if confirm == 'y': 
+            x = False
+        elif confirm == 'n':
+            x = False
+            Admin_Guru(cur, conn,id_admin)
+
+    #add alamat ke db
+    if detail == '':
+        query_tambah_alamat =  '''insert into alamat (provinsi, kabupatenkota, kecamatan, jalan)
+                        values(%s, %s, %s, %s)'''
+        cur.execute(query_tambah_alamat, (provinsi, kabupaten, kecamatan, jalan))
+    else:
+        query_tambah_alamat =  '''insert into alamat (provinsi, kabupatenkota, kecamatan, jalan, detail)
+                        values(%s, %s, %s, %s, %s)'''
+        cur.execute(query_tambah_alamat, (provinsi, kabupaten, kecamatan, jalan, detail))
+    conn.commit()
+    
+    #add guru ke db
+    cek_alamat = "select * from alamat"
+    cur.execute(cek_alamat)
+    cek = cur.fetchall()
+    count = 0
+    for i in cek:
+        count+=1
+    query_tambah = '''insert into guru (nama_guru, no_telp, jenis_kelamin, id_pelajaran, id_alamat, id_admin, status, nip)
+                    values(%s, %s, %s, %s, %s, %s, %s, %s)'''
+    cur.execute(query_tambah,(nama_guru, no_telp, gender, pelajaran, count, id_admin, True, nip ))
+    conn.commit()
+
+    ulang = input ("Data guru behasil ditambahkan!\nApakah ingin menambah data baru ? (y/n)")
+    if ulang == 'y':
+        Tambah_Guru(cur,conn,id_admin)
+    if ulang == 'n':
+        Admin_Guru(cur, conn,id_admin)
+
+def Update_Guru(cur, conn, id_admin):
+    clear()
+    query_cek_data = "select * from guru"
+    cur.execute(query_cek_data)
+    data = cur.fetchall()
+    print("=" * 125)
+    print("|" + " " * 54 + "Update Data Guru" + " " * 53 + "|")
+    print("=" * 125)
+    print(f'No\t\t Nama \t\t Nomor Telepon\t Gender\tMapel\tAlamat\tAdmin\tStatus\tDeskripsi\tNIP')
+    print("-"*125)
+    No = 0
+    for i in data:
+        No += 1
+        if len(i[1]) <= 5 and (i[8] != 'null' or len(i[8]) <= 5):
+            print(f"{No}\t {i[1]}\t\t\t {i[2]}\t {i[3]}\t{i[4]}\t{i[5]}\t{i[6]}\t{i[7]}\t{i[8]}\t{i[9]}")
+        if len(i[1]) <= 15 and (i[8] != 'null' or len(i[8]) <= 5):
+            print(f"{No}\t {i[1]}\t\t {i[2]} \t {i[3]}\t{i[4]}\t{i[5]}\t{i[6]}\t{i[7]}\t{i[8]}\t\t{i[9]}")
+        elif len(i[1]) > 15 and (i[8] != 'null' or len(i[8]) <= 5):
+            print(f"{No}\t {i[1]}\t {i[2]} \t {i[3]}\t{i[4]}\t{i[5]}\t{i[6]}\t{i[7]}\t{i[8]}\t\t{i[9]}")
+        elif len(i[1]) <= 5 and (i[8] != 'null' or len(i[8]) > 5):
+            print(f"{No}\t {i[1]}\t\t {i[2]} \t {i[3]}\t{i[4]}\t{i[5]}\t{i[6]}\t{i[7]}\t{i[8]}\t{i[9]}")
+        elif len(i[1]) <= 15 and (i[8] != 'null' or len(i[8]) > 5):
+            print(f"{No}\t\t {i[1]}\t {i[2]} \t {i[3]}\t{i[4]}\t{i[5]}\t{i[6]}\t{i[7]}\t{i[8]}\t{i[9]}")
+        elif len(i[1]) > 15 and (i[8] != 'null' or len(i[8]) > 5):
+            print(f"{No}\t\t {i[1]}\t {i[2]} \t {i[3]}\t{i[4]}\t{i[5]}\t{i[6]}\t{i[7]}\t{i[8]}\t{i[9]}")
+    print("="*125)
+    while True:
+        id = input ("nomer dari data yang ingin diubah : ")
+        if id != "":
+            id = int(id)
+            break
+    
+    count = 0
+    for i in data:
+        count+=1
+        if count == id:
+            data_lama_guru = i
+
+    print("Inputkan data baru!\nTekan Enter jika data tidak diubah!")
+    nama = input      ("Nama          :")
+    if nama == '':
+        nama = data_lama_guru[1]
+    no_telp = input   ("Nomer Telepon :")
+    if no_telp == '':
+        no_telp = data_lama_guru[2]
+    gender = input    ("Gender (L/P)  :")
+    if gender == '':
+        gender = data_lama_guru[3]
+    cek_pelajaran = "select kode_pelajaran, nama_pelajaran from mata_pelajaran"
+    cur.execute(cek_pelajaran)
+    cek = cur.fetchall()
+    No = 0
+    for i in cek:
+        No += 1
+        print(f"{No}\t {i[1]}")
+    loop = True
+    while loop == True:
+        pelajaran = input("nomer Pelajaran  :")
+        if pelajaran == '':
+            pelajaran = data_lama_guru[4]
+            loop = False
+        else:
+            kode = True
+            for data in  cek:
+                if data[0] == 'KD'+pelajaran:
+                    loop = False
+                    kode = False
+                    break
+            if kode == True:
+                input("kode mata pelajaran tidak ada")
+    
+    cek_alamat = "select * from alamat"
+    cur.execute(cek_alamat)
+    cek_data = cur.fetchall()
+    count_id = 0
+    for data in cek_data:
+        count_id += 1
+        if data[0] == data_lama_guru[5]:
+            data_lama_alamat = data
+
+    provinsi = input    ("Provinsi tempat tinggal       : ")
+    if provinsi == '':
+        provinsi = data_lama_alamat[1]
+    kabupaten = input   ("Kabupaten/Kota tempat tinggal : ")
+    if kabupaten == '':
+        kabupaten = data_lama_alamat[2]
+    kecamatan = input   ("Kecamatan tempat tinggal      : ")
+    if kecamatan == '':
+        kecamatan = data_lama_alamat[3]
+    jalan = input       ("Jalan tempat tinggal          : ")
+    if jalan == '':
+        jalan = data_lama_alamat[4]
+    detail = input      ("Detail alamat (Opsional)      : ")
+    if detail == '':
+        detail = data_lama_alamat[5]
+    while True:
+        status = input  ("Status (Aktif/Tidak)          : ")
+        if status == '':
+            if data_lama_guru[6] == True:
+                status = 'true'
+            else:
+                status = 'false'
+            deskripsi = data_lama_guru[8]
+            break
+        elif status == 'Aktif':
+            status = 'true'
+            deskripsi = ''
+            break
+        elif status == "Tidak":
+            status = 'false'
+            deskripsi = input ("Deskripsi                     : ")
+            break
+    nip = input         ("NIP                           : ")
+    if nip == '':
+        nip = data_lama_guru[9]
+
+    print("-"*125)
+    x = True
+    while x == True:
+        confirm = input("Apakah anda ingin memasukkan data ini ? (y/n) : ")
+        if confirm == 'y': 
+            x = False
+        elif confirm == 'n':
+            x = False
+            Admin_Guru(cur, conn,id_admin)
+
+    #update alamat
+    query_update_alamat = f'''update alamat set   provinsi = '{provinsi}', 
+                                            kabupatenkota = '{kabupaten}', 
+                                            kecamatan = '{kecamatan}', 
+                                            jalan = '{jalan}', 
+                                            detail = '{detail}' 
+                        where id_alamat = {count_id}'''
+    cur.execute(query_update_alamat)
+    conn.commit()
+
+    #update guru
+    query_update_guru = f'''update guru set nama_guru = '{nama}',
+                                            no_telp = '{no_telp}', 
+                                            jenis_kelamin = '{gender}',
+                                            id_pelajaran = {pelajaran},
+                                            id_admin = {id_admin}
+                                            status = {status},
+                                            deskripsi = '{deskripsi}',
+                                            nip = '{nip}'
+                            where id_guru = {id} '''
+    cur.execute(query_update_guru)
+    conn.commit()
+
+    ulang = input ("Data guru behasil diupdate!\nApakah ingin update data lain ? (y/n)")
+    if ulang == 'y':
+        Update_Guru(cur,conn,id_admin)
+    if ulang == 'n':
+        Admin_Guru(cur, conn,id_admin)
+
 def Jadwal_pelajaran_a(cur, conn, id_admin):
     print("=" * 31)
     print("|" + " " * 6 + "Jadwal Pelajaran" + " " * 7 + "|")
@@ -709,12 +976,12 @@ def Login_guru(cur,conn):
     cur.execute(select_query, (nama_guru, nip))
     data2 = cur.fetchone()
     if data2:
-        Menu_guru(cur,conn)
+        Menu_guru(cur,conn,nama_guru)
     else:
         input('Username atau password salah.')
         Login_guru(cur,conn)  
         
-def Menu_guru(cur,conn):
+def Menu_guru(cur,conn,nama_guru):
     clear()
     tampilan_guru()
     print("[1] Jadwal Pelajaran")
@@ -725,18 +992,18 @@ def Menu_guru(cur,conn):
     pilih_menu = input("Pilih menu nomor (1/2) : ")
     match pilih_menu:
         case '1':
-            Jadwal_pelajaran_g(cur,conn)
+            Jadwal_pelajaran_g(cur,conn,nama_guru)
         case '2':
-            Jenis_tugas(cur,conn)
+            Jenis_tugas(cur,conn,nama_guru)
         case '3':
-            Nilai_siswa()
+            Nilai_Siswa(cur, conn, nama_guru)
         case '4':
             Menu_utama(cur,conn) 
         case _:
             input("Perintah tidak diketahui!")
-            Menu_guru(cur,conn) 
+            Menu_guru(cur,conn,nama_guru) 
 
-def Jadwal_pelajaran_g(cur, conn):
+def Jadwal_pelajaran_g(cur, conn,nama_guru):
     print("=" * 31)
     print("|" + " " * 6 + "Jadwal Pelajaran" + " " * 7 + "|")
     print("=" * 31)
@@ -746,14 +1013,14 @@ def Jadwal_pelajaran_g(cur, conn):
     pilih_menu = input(f"Pilih menu nomor (1/2) : ")
     match pilih_menu:
         case '1':
-            Detail_jadwal_g(cur, conn)
+            Detail_jadwal_g(cur, conn,nama_guru)
         case '2':
-            Menu_guru(cur,conn)
+            Menu_guru(cur,conn,nama_guru)
         case _:
             input("Perintah tidak diketahui!")
-            Jadwal_pelajaran_g(cur, conn)
+            Jadwal_pelajaran_g(cur, conn,nama_guru)
 
-def Detail_jadwal_g(cur, conn):
+def Detail_jadwal_g(cur, conn,nama_guru):
     print("--Detail Jadwal--")
     print("Pilih jenis pencarian:")
     print("[1] Berdasarkan ID Jadwal")
@@ -792,15 +1059,15 @@ def Detail_jadwal_g(cur, conn):
                 awal_pelajaran = jadwal[2].strftime("%H:%M:%S")
                 akhir_pelajaran = jadwal[3].strftime("%H:%M:%S")
                 print(f"{jadwal[0]:<12} {jadwal[1]:<9} {awal_pelajaran:<16} {akhir_pelajaran:<17} {jadwal[4]:<8} {jadwal[5]:<12} {jadwal[6]:<8}")
-                Jadwal_pelajaran_g(cur, conn)
+                Jadwal_pelajaran_g(cur, conn,nama_guru)
         else:
             print("Jadwal tidak ditemukan.")
-            Detail_jadwal_g(cur, conn)
+            Detail_jadwal_g(cur, conn,nama_guru)
     except Exception as e:
         print(f"Terjadi kesalahan: {e}")
-        Jadwal_pelajaran_g(cur, conn)
+        Jadwal_pelajaran_g(cur, conn,nama_guru)
 
-def Jenis_tugas(cur,conn):
+def Jenis_tugas(cur,conn,nama_guru):
     clear()
     print("=" * 41)
     print("|" + " " * 14 + "Jenis Tugas" + " " * 14 + "|")
@@ -823,18 +1090,18 @@ def Jenis_tugas(cur,conn):
     pilih_menu = input(f"Pilih menu nomor (1/2/3/4) : ")
     match pilih_menu:
         case '1':
-            Tambah_jenis_tugas(cur,conn)
+            Tambah_jenis_tugas(cur,conn,nama_guru)
         case '2':
-            Edit_jenis_tugas(cur,conn)
+            Edit_jenis_tugas(cur,conn,nama_guru)
         case '3':
-            Hapus_jenis_tugas(cur,conn)
+            Hapus_jenis_tugas(cur,conn,nama_guru)
         case '4':
-            Menu_guru(cur,conn)
+            Menu_guru(cur,conn,nama_guru)
         case _:
             input("Perintah tidak diketahui!")
-            Jenis_tugas(cur,conn)  
+            Jenis_tugas(cur,conn,nama_guru)  
 
-def Tambah_jenis_tugas(cur,conn):
+def Tambah_jenis_tugas(cur,conn,nama_guru):
     print(f"-- Tambah Jenis Tugas  --")
     total_input = int(input(f"Ingin Menambahkan Berapa Data : "))
     for i in range(total_input):
@@ -845,7 +1112,7 @@ def Tambah_jenis_tugas(cur,conn):
         for data in cek:
             if data[0] == id_tugas:
                 print("ID Jenis Tugas Sudah Ada")
-                Tambah_jenis_tugas(cur,conn)
+                Tambah_jenis_tugas(cur,conn,nama_guru)
 
             else:
                 jenis_tugas = input(f"Masukkan Jenis Tugas    : ")
@@ -853,9 +1120,9 @@ def Tambah_jenis_tugas(cur,conn):
                                 VALUES(%s, %s)'''
                 cur.execute(query_tambah_jenis_tugas,(id_tugas, jenis_tugas))
                 conn.commit()
-                Jenis_tugas(cur,conn)
+                Jenis_tugas(cur,conn,nama_guru)
 
-def Edit_jenis_tugas(cur,conn):
+def Edit_jenis_tugas(cur,conn,nama_guru):
     print(f"-- Edit Jenis Tugas --")
     id_tugas= input(f"Masukkan ID Tugas Yang Ingin Diupdate: ")
     select_query_jenis_tugas = '''SELECT * FROM jenis_tugas WHERE id_tugas = %s'''
@@ -874,12 +1141,12 @@ def Edit_jenis_tugas(cur,conn):
         cur.execute(update_query_jenis_tugas, (Nama_Kelas, id_tugas))
         conn.commit()
         input("Data Jenis Tugas Telah Diperbarui.")
-        Jenis_tugas(cur,conn)
+        Jenis_tugas(cur,conn,nama_guru)
     else:
         print("ID Jenis Tugas Tidak Ditemukan.")
-        Edit_jenis_tugas(cur,conn)
+        Edit_jenis_tugas(cur,conn,nama_guru)
 
-def Hapus_jenis_tugas(cur,conn):
+def Hapus_jenis_tugas(cur,conn,nama_guru):
     print(f"-- Hapus Jenis TUgas --")
     id_tugas = input(f"Masukkan ID Tugas Yang Ingin Dihapus : ")
     select_query_jenis_tugas = '''SELECT * FROM jenis_tugas WHERE id_tugas = %s'''
@@ -895,12 +1162,277 @@ def Hapus_jenis_tugas(cur,conn):
             cur.execute(query_delete_jenis_tugas,(id_tugas,))
             conn.commit()
             input("Hapus Data Jenis Tugas Berhasil.")
-            Jenis_tugas(cur,conn)
+            Jenis_tugas(cur,conn,nama_guru)
         else:
-            Jenis_tugas(cur,conn)
+            Jenis_tugas(cur,conn,nama_guru)
     else:
         print("ID Jenis Tugas Tidak Ditemukan.")
-        Hapus_jenis_tugas(cur,conn)
+        Hapus_jenis_tugas(cur,conn,nama_guru)
         
+def Nilai_Siswa(cur,conn,nama_guru):
+    clear()
+    cek_kelas = """
+            select *
+            from kelas
+            """
+    cur.execute(cek_kelas)
+    data_kelas = cur.fetchall()
+    print("="*18)
+    print("|" + " " * 3 + "Nilai Siswa" + " " * 2 + "|")
+    print("="*18)
+    print(f'No\tKelas\n{"-"*18}')
+    for i in data_kelas:
+        print(f'{i[0]}\t{i[1]}')
+    print("="*18)
+
+    while True:
+        id = input ("Nomer Kelas : ")
+        if id != "":
+            id = int(id)
+            break
+    for kelas in data_kelas:
+        if kelas[0] == id:
+            pkelas = kelas[1]
+#=================================================================
+    clear()
+    cek_siswa = f'''select *
+                    from siswa
+                    where id_kelas = {id}'''
+    cur.execute(cek_siswa)
+    data_siswa = cur.fetchall()
+
+    # cek_seluruh_siswa = f'''select *
+    #                 from siswa'''
+    # cur.execute(cek_siswa)
+    # data_siswa = cur.fetchall()
+
+    print("="*30)
+    print("|" + " " * 9 + "Nilai Siswa" + " " * 8 + "|")
+    print("="*30)
+    print(f"| {' '*6} Kelas {pkelas} {' '*5} |")
+    print("="*30)
+    print(f'No\tNama\n{"-"*30}')
+    No = 0
+    for x in data_siswa:
+        No+=1
+        print(f'{No}\t{x[2]}')
+    print("="*30)
+
+    while True:
+        id = input ("Nomer Siswa : ")
+        if id != "":
+            id = int(id)
+            break
+    cek_nomer = 0
+    for c in data_siswa:
+        cek_nomer += 1
+        if cek_nomer == id:
+            absen = c
+        
+#=================================================================
+    clear()
+    guru = "select * from guru"
+    cur.execute(guru)
+    cek_guru = cur.fetchall()
+    for data_guru in cek_guru:
+        if data_guru[1] == nama_guru:
+            id_guru = data_guru
+    cek_nilai= f''' select *
+                    from nilai_siswa ns
+                    join jenis_tugas jt on ns.id_tugas = jt.id_tugas
+                    where id_siswa = {id} and id_guru = {id_guru[0]}'''
+    cur.execute(cek_nilai)
+    data_nilai = cur.fetchall()
+
+    print("="*30)
+    print("|" + " " * 9 + "Nilai Siswa" + " " * 8 + "|")
+    print("="*30)
+    print(f'No\tTugas\t\tNilai\n{"-"*30}')
+    No=0
+    for y in data_nilai:
+        No+=1
+        print(f"{No}\t{y[6]}\t\t{y[1]}")
+    print("="*30)
+    print("[1] Tambah")
+    print("[2] Edit")
+    print("[3] Hapus")
+    print("[4] Kembali")
+    print("="*30)
+    pilih_menu = input(f"Pilih menu nomor (1/2/3/4) : ")
+    match pilih_menu:
+        case '1':
+            Tambah_Nilai(cur,conn,absen,nama_guru)
+        case '2':
+            print('edit data')
+            Update_Nilai(cur,conn,absen,nama_guru)
+        case '3':
+            print('hapus data')
+            Delete_Nilai(cur,conn,absen,nama_guru)
+        case '4':
+            print('kembali')
+            
+        case _:
+            input("Perintah tidak diketahui!")
+            Nilai_Siswa(cur,conn,)
+
+def Tambah_Nilai(cur,conn,absen,nama_guru):
+    clear()
+
+    query_tugas = "select * from jenis_tugas"
+    cur.execute(query_tugas)
+    cek_tugas = cur.fetchall()
+    id_tugas = 0
+    for jenis in cek_tugas:
+        id_tugas+=1
+        print(f"{jenis[0]}\t{jenis[1]}")
+    id_tugas+=1
+    tugas = input("Nama tugas   : ")
+    verif = False
+    for a in cek_tugas:
+        if a[1] == tugas:
+            verif = True
+            id_tugas = a[0]
+            break
+    if verif == False:
+        while True:
+            jenis_baru = input("Jenis tugas Tidak ada. Apakah ingin menambahkan jenis tugas baru ? (y/n) : ")
+            if jenis_baru == 'n':
+                Tambah_Nilai(cur,conn)
+            elif jenis_baru == 'y':
+
+                query_tambah_tugas = '''insert into jenis_tugas (id_tugas, jenis_tugas)
+                            values(%s, %s)'''
+                cur.execute(query_tambah_tugas, (id_tugas, tugas))
+                conn.commit()
+                break
+    
+    Try = True
+    while Try == True:
+        Try = False
+        Nilai = input("Nilai        : ")
+        try:
+            Nilai = int(Nilai)
+        except SyntaxError:
+            Try = True
+
+    query_tambah_nilai = '''insert into nilai_siswa (nilai_tugas, id_guru, id_siswa, id_tugas)
+                            values(%s, %s, %s, %s)'''
+    cur.execute(query_tambah_nilai, (Nilai, 1, absen[0], id_tugas))
+    conn.commit()
+
+    ulang = input ("Nilai behasil ditambahkan!\nApakah ingin memasukkan nilai lain ? (y/n)")
+    if ulang == 'y':
+        Tambah_Nilai(cur,conn,absen,nama_guru)
+    elif ulang == 'n':
+        Nilai_Siswa(cur, conn,nama_guru)
+
+def Update_Nilai(cur,conn,absen,nama_guru):
+    clear()
+    guru = "select * from guru"
+    cur.execute(guru)
+    cek_guru = cur.fetchall()
+    for data_guru in cek_guru:
+        if data_guru[1] == nama_guru:
+            id_guru = data_guru
+
+    cek_nilai= f''' select *
+                    from nilai_siswa ns
+                    join jenis_tugas jt on ns.id_tugas = jt.id_tugas
+                    where id_siswa = {absen[0]} and id_guru = {id_guru[0]} '''
+    cur.execute(cek_nilai)
+    data_nilai = cur.fetchall()
+    print("=" * 30)
+    print("|" + " " * 5 + "Update Nilai Siswa" + " " * 5 + "|")
+    print("=" * 30)
+    print(f'No\tTugas\t\tNilai\n{"-"*30}')
+    No=0
+    for y in data_nilai:
+        No+=1
+        print(f"{No}\t{y[6]}\t\t{y[1]}")
+    print("="*30)
+    valid = False
+    while valid == False:
+        tugas = input("Nama tugas    : ")
+        for jenis in data_nilai:
+            if jenis[6] == tugas:
+                valid = True
+                tugas = jenis[4]
+                break
+        if valid == False:
+            input("Tugas tidak ada! Silahkan masukkan tugas kembali")
+
+    x=True
+    while x == True:
+        x=False
+        Nilai = input("Nilai terbaru : ")
+        try:
+            Nilai = int(Nilai)
+        except SyntaxError:
+            x=True
+    query_update_nilai = f'''update nilai_siswa set nilai_tugas = {Nilai}
+                            where id_tugas = {tugas} and id_siswa = {absen[0]} and id_guru = {id_guru[0]} '''
+    cur.execute(query_update_nilai)
+    conn.commit()
+
+    ulang = input ("Nilai berhasil diubah!\nApakah ingin mengubah nilai lain ? (y/n)")
+    if ulang == 'y':
+        Update_Nilai(cur,conn,absen,nama_guru)
+    elif ulang == 'n':
+        Nilai_Siswa(cur, conn, nama_guru)
+
+def Delete_Nilai(cur,conn,absen,nama_guru):
+    clear()
+    guru = "select * from guru"
+    cur.execute(guru)
+    cek_guru = cur.fetchall()
+    for data_guru in cek_guru:
+        if data_guru[1] == nama_guru:
+            id_guru = data_guru
+
+    cek_nilai = f"""select *
+                    from nilai_siswa ns
+                    join jenis_tugas jt on ns.id_tugas = jt.id_tugas
+                    where id_siswa = {absen[0]} and id_guru = {id_guru[0]}"""
+    cur.execute(cek_nilai)
+    data_nilai = cur.fetchall()
+    print("=" * 30)
+    print("|" + " " * 5 + "Update Nilai Siswa" + " " * 5 + "|")
+    print("=" * 30)
+    print(f'No\tTugas\t\tNilai\n{"-"*30}')
+    No=0
+    for y in data_nilai:
+        No+=1
+        print(f"{No}\t{y[6]}\t\t{y[1]}")
+    print("="*30)
+    valid = False
+    while valid == False:
+        tugas = input("Nama tugas yang akan dihapus    : ")
+        for jenis in data_nilai:
+            if jenis[6] == tugas:
+                valid = True
+                tugas = jenis[0]
+                break
+        if valid == False:
+            input("Tugas tidak ada! Silahkan masukkan tugas kembali")
+    x=True
+    while x == True:
+        confirm = input("Apakah anda ingin menghapus nilai ini ? (y/n) : ")
+        if confirm == 'y':
+            x = False
+        elif confirm == 'n':
+            x = False
+            Nilai_Siswa(cur, conn,absen,nama_guru)
+    print(tugas)
+    query_delete_nilai = f'''delete from nilai_siswa where id_nilai_siswa = {tugas}'''
+    cur.execute(query_delete_nilai)
+    conn.commit()
+
+    ulang = input ("Nilai berhasil dihapus!\nApakah ingin menghapus data lain ? (y/n)")
+    if ulang == 'y':
+        Delete_Nilai(cur,conn,absen,nama_guru)
+    elif ulang == 'n':
+        Nilai_Siswa(cur, conn,nama_guru)
+
+
 if __name__ == "__main__":
     Main()
